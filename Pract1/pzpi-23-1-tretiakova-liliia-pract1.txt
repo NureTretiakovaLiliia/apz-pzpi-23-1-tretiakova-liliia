@@ -1,0 +1,616 @@
+                    МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+   ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+
+
+                          Кафедра Програмної інженерії
+
+
+
+
+                                      Звіт
+                           до практичного заняття №1
+             з дисципліни: «Архітектура програмного забезпечення»
+
+
+
+
+Виконала:                                                           Перевірив:
+ст. гр. ПЗПІ-23-1                                             ст. викл. каф. ПІ
+Третьякова Л. С.                                                Сокорчук І. П.
+
+
+
+
+                                 Харків – 2026
+                                                                   2
+                                1 ІСТОРІЯ ЗМІН
+
+
+№     Дата       Версія звіту    Опис змін та виправлень
+1   23.05.2026       0.1         Оформлено повний текстовий звіт
+2   24.05.2026       0.2         Створено презентацію
+3   31.05.2026       1.0         Записано та опубліковано відео
+                                                                                  3
+                                    2 ЗАВДАННЯ
+
+     Метою     практичного       заняття   є   дослідження   патернів   проєктування
+програмного забезпечення, зокрема вивчення їхньої внутрішньої структури,
+головних завдань та специфіки впровадження у реальних кодових базах.
+     Відповідно до завдання необхідно:
+      а)   Обрати для аналізу один із шаблонів «Банди чотирьох» (GoF), за
+           винятком Singleton.
+     б)    Написати доповідь за темою: «Шаблон проєктування програмного
+           забезпечення».
+     в)    Розробити слайди для презентації доповіді.
+     Для виконання завдання було обрано патерн проєктування «Абстрактна
+фабрика» (Abstract Factory). Цей патерн дозволяє створювати сімейства пов’язаних
+або залежних об’єктів без вказівки їх конкретних класів.
+                                                                             4
+                       3 ОПИС ВИКОНАНОЇ РОБОТИ
+
+      3.1 Загальні відомості про патерн
+
+      Abstract Factory належить до групи породжуючих патернів. Його призначення
+– надати інтерфейс для створення сімейств взаємопов’язаних об’єктів, не
+прив’язуючись до їх конкретних класів.
+
+      3.2 Проблема, яку вирішує патерн
+
+      При   розробці    кросплатформного    GUI-застосунку   виникає   потреба
+створювати різні варіанти UI-компонентів залежно від цільової платформи: на
+Windows і macOS кнопки та чекбокси виглядають і поводяться по-різному
+відповідно до гайдлайнів кожної платформи. Прямолінійний підхід – умовне
+створення об’єктів безпосередньо у коді:
+
+1   // Жорстка залежність від платформи
+2   if (platform == "Windows") {
+3       btn = new WinButton();    // при зміні -- шукати скрізь
+4       chk = new WinCheckbox();
+5   } else {
+6       btn = new MacButton();
+7       chk = new MacCheckbox();
+8   } // Linux? -- ще один блок у кожному місці коду
+
+
+      Такий підхід має три недоліки. По-перше, прив’язка до конкретних класів:
+виклики new WinButton() та new MacButton() розкидані по всьому коду, і кожне
+розширення (нова платформа) вимагає ручного пошуку та правки всіх таких блоків.
+      По-друге, ризик несумісних об’єктів: незалежні if-else-блоки в різних
+частинах коду не гарантують узгодженого використання компонентів одного
+сімейства – компілятор такої помилки не виявить.
+      По-третє, порушення Open/Closed Principle: додавання нової платформи
+вимагає модифікації вже написаного коду в багатьох місцях.
+                                                                                5
+      3.3 Наміри
+
+      Офіційне визначення GoF: «Abstract Factory надає інтерфейс для створення
+сімейств взаємопов’язаних або взаємозалежних об’єктів, не специфікуючи їх
+конкретних класів». Ключові аспекти визначення:
+      –     клієнтський код звертається до методів фабрики, а не до конструкторів
+            напряму;
+      –     патерн оперує сімействами – кількома пов’язаними типами об’єктів, що
+            гарантовано сумісні між собою;
+      –     конкретні класи продуктів (WinButton, MacButton) повністю приховані
+            від клієнта.
+      Патерн забезпечує чотири наміри. Перший – ізоляція конкретних класів:
+клієнт працює виключно з абстракціями IGUIFactory, IButton, ICheckbox. Другий –
+легка заміна сімейства: для переключення застосунку на іншу платформу достатньо
+передати відповідну фабрику в одному місці. Третій – гарантія сумісності:
+всі об’єкти сімейства створює одна фабрика, що унеможливлює їх несумісне
+поєднання. Четвертий – відповідність принципам SOLID: OCP та DIP (Dependency
+Inversion Principle).
+
+      3.4 Структура
+
+      Патерн складається з п’яти типів учасників, що утворюють дворівневу
+ієрархію.
+      IGUIFactory – центральний інтерфейс із методами CreateButton() та
+CreateCheckbox(). Це єдине, що знає клієнт про механізм створення об’єктів.
+Завдяки цьому клієнт повністю ізольований від будь-яких деталей реалізації.
+      WindowsFactory та MacFactory – конкретні реалізації IGUIFactory. Кожна
+з них відповідає за одне сімейство і завжди повертає лише узгоджений набір:
+WindowsFactory не може випадково повернути MacButton.
+      IButton та ICheckbox – інтерфейси абстрактних продуктів. Клієнт приймає
+лише ці типи. Він викликає btn.Render() або chk.Toggle(), не знаючи, яка платформа
+стоїть за цим.
+                                                                                6
+       WinButton, MacButton, WinCheckbox, MacCheckbox – конкретні продукти.
+Тут зосереджена вся платформозалежна логіка і відображення. Клієнт ніколи не
+посилається на ці класи напряму.
+       Application – клієнт – отримує IGUIFactory через конструктор за патерном
+Dependency Injection. Усередині не має жодного if-else, пов’язаного з платформою.
+Вся різниця між платформами повністю схована у фабриках та продуктах. Взаємодія
+виглядає так: на старті програми в одному місці визначається поточна платформа,
+створюється відповідна конкретна фабрика і передається клієнту. Далі клієнт просто
+викликає методи фабрики, не знаючи, яка саме фабрика у нього в руках.
+
+       3.5 C# – Інтерфейси та конкретні класи
+
+       Нижче визначено інтерфейси продуктів та фабрики. IGUIFactory повертає
+абстрактні типи IButton та ICheckbox, а не конкретні класи:
+
+1    public interface IButton   { void Render(); }
+2    public interface ICheckbox { void Toggle(); }
+3
+4    public interface IGUIFactory {
+5        IButton   CreateButton();
+6        ICheckbox CreateCheckbox();
+7    }
+
+
+       Конкретні продукти та фабрика для платформи Windows (MacFactory
+реалізується аналогічно):
+
+ 1   public class WinButton : IButton {
+ 2       public void Render() =>
+ 3           Console.WriteLine("[ Win Button ]");
+ 4   }
+ 5   public class WinCheckbox : ICheckbox {
+ 6       public void Toggle() =>
+ 7           Console.WriteLine("[x] Win Checkbox");
+ 8   }
+ 9   public class WindowsFactory : IGUIFactory {
+10       public IButton   CreateButton()   => new WinButton();
+11       public ICheckbox CreateCheckbox() => new WinCheckbox();
+12   }
+
+
+       WindowsFactory завжди повертає WinButton і WinCheckbox разом – це і є
+гарантія сумісності. Фізично неможливо отримати від WindowsFactory об’єкт від
+іншої платформи.
+                                                                                   7
+          3.6 Клієнт та точка входу
+
+          Клієнтський клас Application залежить виключно від IGUIFactory і не містить
+жодних посилань на конкретні платформи:
+
+ 1 public class Application {
+ 2     private readonly IGUIFactory _factory;
+ 3
+ 4     public Application(IGUIFactory factory)
+ 5         => _factory = factory;
+ 6
+ 7     public void BuildUI() {
+ 8         _factory.CreateButton().Render();
+ 9         _factory.CreateCheckbox().Toggle();
+10     }
+11 }
+
+
+          Фабрика передається в конструктор – це класичний патерн Dependency
+Injection. Саме це робить Application легко тестованим: у тестах можна передати
+MockFactory, яка повертає заглушки без будь-якого реального UI. Точка входу –
+єдине місце у всьому проєкті, де визначається платформа. Лише тут є умовний
+оператор:
+
+1       IGUIFactory factory = RuntimeInformation
+2           .IsOSPlatform(OSPlatform.Windows)
+3           ? new WindowsFactory()
+4           : new MacFactory();
+5
+6       new Application(factory).BuildUI();
+7       // Вивід на Windows: [ Win Button ]    [x] Win Checkbox
+8       // Вивід на macOS:   ( Mac Button )    ( ) Mac Checkbox
+
+
+          3.7 Розширення: додаємо Linux (OCP у дії)
+
+          Для додавання підтримки нової платформи (Linux) достатньо оголосити нові
+конкретні класи без жодних змін в існуючому коді:
+
+    1   // Тільки нові класи -- жоден існуючий файл не змінюємо
+    2   public class LinuxButton : IButton {
+    3       public void Render() =>
+    4           Console.WriteLine("[ Linux Button ]");
+    5   }
+    6   public class LinuxCheckbox : ICheckbox {
+    7       public void Toggle() =>
+    8           Console.WriteLine("[x] Linux Checkbox");
+    9   }
+                                                                                   8
+
+10   public class LinuxFactory : IGUIFactory {
+11       public IButton   CreateButton()   => new LinuxButton();
+12       public ICheckbox CreateCheckbox() => new LinuxCheckbox();
+13   }
+
+
+       У точці входу додається лише нова умова вибору фабрики; Application.cs
+залишається повністю незміненим:
+
+1    IGUIFactory factory = RuntimeInformation
+2        .IsOSPlatform(OSPlatform.Windows) ? new WindowsFactory()
+3        : RuntimeInformation
+4          .IsOSPlatform(OSPlatform.Linux) ? new LinuxFactory() // ← новий
+5          : new MacFactory();
+
+
+       Open/Closed Principle на практиці: нова платформа додається через
+розширення (нові класи) без модифікації Application.cs.
+
+       3.8 Переваги та недоліки
+
+       Abstract Factory, як і будь-який патерн, є архітектурним компромісом із явними
+перевагами та обмеженнями.
+       Переваги:
+        –   Ізоляція від конкретних класів. Application залежить лише від
+            IGUIFactory, IButton, ICheckbox. Жодного new WinButton() у бізнес-логіці.
+        –   Легка заміна сімейства. Щоб переключити весь застосунок на іншу
+            платформу або тему, достатньо змінити один рядок у точці входу.
+        –   Гарантована сумісність. Оскільки продукти створює одна фабрика,
+            виключена ситуація несумісних об’єктів різних сімейств.
+        –   Спрощене тестування. Передаємо MockFactory у конструктор Application
+            – і юніт-тест запускається без реального UI, мережі чи бази даних.
+        –   Відповідність SOLID: OCP, DIP та SRP – кожен клас відповідає за одну
+            чітку задачу.
+       Недоліки:
+        –   Важко додавати нові типи продуктів. Якщо потрібно додати ISlider –
+            доведеться змінити IGUIFactory і переписати всі конкретні фабрики. Це
+            порушує OCP щодо нових типів продуктів.
+                                                                                  9
+       –   Кількість класів зростає за формулою n × m: n сімейств помножити на m
+           типів продуктів – стільки конкретних класів виходить, плюс n фабрик.
+       –   Надмірна складність для малих задач. Якщо у проєкті одне незмінне
+           сімейство – патерн вносить зайву абстракцію без реальної користі.
+      Порівняння з Factory Method: FM створює один тип продукту через
+наслідування підкласу. AF створює ціле сімейство через зовнішній об’єкт-фабрику,
+тобто через композицію. Якщо у вас є кілька пов’язаних Factory Method, що завжди
+викликаються разом – це ознака того, що варто перейти до Abstract Factory.
+
+      3.9 Abstract Factory + DI (ASP.NET Core)
+
+      Приклад застосування у ASP.NET Core: система оповіщень, де у production-
+середовищі надсилаються реальні листи та SMS, а у тестовому – виконується запис
+у лог. Фабрика реєструється в DI-контейнері залежно від оточення:
+
+1   // Program.cs -- ASP.NET Core / .NET 6+
+2   if (builder.Environment.IsProduction())
+3       builder.Services
+4           .AddSingleton<INotificationFactory,
+5                         SmtpNotificationFactory>();
+6   else
+7       builder.Services
+8           .AddSingleton<INotificationFactory,
+9                         FakeNotificationFactory>(); // пише в лог
+
+
+      OrderService отримує фабрику через конструктор і залежить виключно від
+INotificationFactory:
+
+1   public class OrderService(INotificationFactory factory) {
+2       public void PlaceOrder(Order order) {
+3           factory.CreateEmailSender()
+4                  .Send(order.Email, "Замовлення прийнято");
+5           factory.CreateSmsSender()
+6                  .Send(order.Phone, "SMS підтвердження");
+7       }
+8   }
+
+
+      У production SmtpNotificationFactory повертає реальний SmtpEmailSender та
+TwilioSmsSender. У тестах FakeNotificationFactory повертає FakeEmailSender та
+FakeSmsSender, які пишуть повідомлення в лог. OrderService не потребує змін при
+                                                                         10
+зміні середовища, що відповідає OCP. Це типовий спосіб застосування Abstract
+Factory у .NET-розробці.
+                                                                               11
+                                4 ВИСНОВКИ
+
+У результаті виконання практичного заняття:
+а)   Досліджено патерн проєктування Abstract Factory з групи породжуючих
+     патернів «Банди чотирьох»: вивчено проблему, яку він вирішує, його
+     структуру з п’ятьма типами учасників та чотири основні наміри.
+б)   Проаналізовано       недоліки    прямолінійного    підходу    до   створення
+     платформозалежних об’єктів через if-else: прив’язку до конкретних
+     класів, ризик несумісних об’єктів та порушення Open/Closed Principle.
+в)   Реалізовано       патерн    на     C#    для      кросплатформного     GUI-
+     застосунку    з   інтерфейсами     IGUIFactory,    IButton,   ICheckbox   та
+     конкретними фабриками WindowsFactory, MacFactory, LinuxFactory;
+     продемонстровано розширення на нову платформу без змін існуючого
+     коду.
+г)   Розглянуто інтеграцію Abstract Factory з DI-контейнером ASP.NET Core
+     на прикладі системи оповіщень, де фабрика підміняється залежно від
+     середовища виконання без модифікації клієнтського коду.
+д)   Проаналізовано переваги (ізоляція конкретних класів, гарантована
+     сумісність об’єктів сімейства, відповідність OCP та DIP) та недоліки
+     патерну (складність додавання нових типів продуктів, лінійне зростання
+     кількості класів).
+                                                                             12
+                     5 ВИКОРИСТАНІ ДЖЕРЕЛА
+
+а)   Gamma E., Helm R., Johnson R., Vlissides J. Design Patterns: Elements of
+     Reusable Object-Oriented Software. – Addison-Wesley, 1994. – 395 p.
+б)   Freeman E., Robson E. Head First Design Patterns: Building Extensible and
+     Maintainable Object-Oriented Software. 2nd ed. – O’Reilly Media, 2021. –
+     672 p.
+в)   Microsoft.   Dependency    injection   in   ASP.NET     Core.    Microsoft
+     Learn.   URL:   https://learn.microsoft.com/en-us/aspnet/core/fundamentals/
+     dependency-injection (дата звернення: 23.05.2026).
+                                                                     13
+                            ДОДАТОК А
+                             Відеозапис
+
+Відеозапис презентації: https://youtu.be/2bq40C4_BOc.
+Хронологічний опис відеозапису:
+–   00:00 – Вступ
+–   00:17 – Загальні відомості про патерн
+–   00:39 – Проблематика використання звичайних умовних блоків
+–   02:14 – Класичне визначення патерну
+–   03:36 – Структура та ієрархія використання патерну
+–   05:00 – Приклад із UI на C#
+–   05:40 – Приклад із UI на C#: точка входу в програму
+–   06:47 – Розширення без зміни існуючого коду: підтримка принципу OCP
+–   07:57 – Переваги та недоліки патерну
+–   10:21 – Реальний приклад на ASP.NET Core
+–   11:45 – Висновки
+              14
+ДОДАТОК Б
+Презентація
+                                                                                                                   15
+
+
+
+          ПОРОДЖУЮЧИЙ ПАТЕРН
+
+
+
+
+    Abstract Factory
+    Абстрактна фабрика
+
+    Інтерфейс для створення сімейств пов'язаних об'єктів
+    без прив'язки до конкретних класів
+
+    підготувала ст.гр. ПЗПІ-23-1 Третьякова Лілія
+
+
+
+
+ Проблема — код без патерну
+
+Без патерну: клієнт напряму залежить від конкретних класів та платформи:
+public class App {
+    public void BuildUI(string platform) {
+          IButton    btn;
+          ICheckbox chk;
+          if (platform == "Windows") {
+              btn = new WinButton();     // жорстка залежність
+              chk = new WinCheckbox();   // при зміні — шукати скрізь
+          } else {
+              btn = new MacButton();
+              chk = new MacCheckbox();
+          }   // ← якщо додати Linux — ще один блок у кожному місці
+    }
+}
+        Прив'язка до класів                        Несумісні об'єкти                  Порушення OCP
+ Клієнт знає про WinButton/MacButton       Ніщо не заважає змішати платформи   Розширення = зміна існуючого коду
+                                                                                                                                    16
+
+
+         Визначення (GoF)
+
+
+         Надає інтерфейс для створення сімейств взаємопов'язаних об'єктів,
+         не специфікуючи їх конкретних класів.
+
+
+
+   01        Ізолює клієнта від конкретних класів                       03   Легка заміна цілого сімейства продуктів
+
+
+
+   02        Гарантує сумісність продуктів у сімействі                  04   Відповідність OCP та DIP (принципи SOLID)
+
+
+
+
+ Структура та учасники
+
+                                                 «interface» IGUIFactory
+
+                                        + CreateButton(): IButton
+                                        + CreateCheckbox(): ICheckbox
+
+
+
+
+             WindowsFactory                                                                           MacFactory
+                                                           Client
++ CreateButton(): WinButton                                                             + CreateButton(): MacButton
++ CreateCheckbox(): WinCheckbox                                                         + CreateCheckbox(): MacCheckbox
+
+
+
+
+        «interface» IButton                                                                        «interface» ICheckbox
+
++ Render()                                                                                    + Toggle()
+
+
+ WinButton            MacButton                                                                WinCheckbox            MacCheckbox
+                                                                                                             17
+
+    C# — Інтерфейси та абстрактна фабрика
+// Продукти                                            // Абстрактна фабрика
+public interface IButton {                             public interface IGUIFactory {
+        void Render();                                         IButton   CreateButton();
+}                                                              ICheckbox CreateCheckbox();
+public interface ICheckbox {                           }
+        void Toggle();
+}                                                      // Конкретні фабрики
+                                                       public class WindowsFactory : IGUIFactory {
+// Конкретні продукти                                          public IButton CreateButton()
+public class WinButton : IButton {                                  => new WinButton();
+        public void Render() =>                                public ICheckbox CreateCheckbox()
+             Console.WriteLine("[ Win Button ]");                   => new WinCheckbox();
+}                                                      }
+public class MacButton : IButton {                     public class MacFactory : IGUIFactory {
+        public void Render() =>                                public IButton CreateButton()
+             Console.WriteLine("( Mac Button )");                   => new MacButton();
+}                                                      }
+
+
+
+
+    C# — Клієнтський код та точка входу
+    // Клієнт — знає лише про інтерфейси                   // Точка входу — єдине місце вибору
+    public class Application {                             class Program {
+         private readonly IGUIFactory _factory;                 static void Main() {
+         private IButton?     _button;                               IGUIFactory factory =
+         private ICheckbox? _checkbox;                                   RuntimeInformation
+                                                                         .IsOSPlatform(OSPlatform.Windows)
+         public Application(IGUIFactory factory)                         ? new WindowsFactory()
+              => _factory = factory;                                     : new MacFactory();
+
+
+         public void BuildUI() {                                     var app = new Application(factory);
+              _button    = _factory.CreateButton();                  app.BuildUI();
+              _checkbox = _factory.CreateCheckbox();                 app.Paint();
+         }                                                      }
+         public void Paint() {                             }
+              _button?.Render();
+              _checkbox?.Toggle();
+         }
+    }
+                                                                                                                  18
+
+ C# — Розширення без зміни існуючого коду (OCP)
+Потрібна підтримка Linux? Додаємо один клас — жодного рядка в Application не змінюємо:
+
+
+  // Тільки нові класи — нічого не ламаємо                    // Program.cs — додаємо 1 рядок
+  public class LinuxButton : IButton {                        IGUIFactory factory =
+      public void Render() =>                                     RuntimeInformation
+          Console.WriteLine("[ Linux Button ]");                  .IsOSPlatform(OSPlatform.Windows)
+  }                                                               ? new WindowsFactory()
+  public class LinuxCheckbox : ICheckbox {                        : RuntimeInformation
+      public void Toggle() =>                                       .IsOSPlatform(OSPlatform.Linux)
+          Console.WriteLine("[x] Linux Checkbox");                  ? new LinuxFactory()    // ← новий рядок
+  }                                                                 : new MacFactory();
+  public class LinuxFactory : IGUIFactory {
+      public IButton   CreateButton()   => new
+                                                              // Application.cs — жодного рядка не змінено
+  LinuxButton();
+      public ICheckbox CreateCheckbox() => new
+  LinuxCheckbox();
+ }
+
+ ✓ Open/Closed Principle: Application відкрита для розширення і закрита для модифікації
+
+
+
+
+ Переваги та недоліки
+
+                 ✓ ПЕРЕВАГИ                                                    ✗ НЕДОЛІКИ
+
+                                                                Важко додати новий тип продукту (ISlider) —
+ Ізоляція клієнта від конкретних класів
+                                                                зміна всіх фабрик
+
+
+ Легка заміна цілого сімейства одним рядком                     Кількість класів: n сімейств × m типів = багато
+
+
+                                                                Надмірно для простих задач з одним
+ Гарантія сумісності продуктів між собою
+                                                                сімейством
+
+
+ OCP, DIP, SRP — відповідає принципам SOLID
+
+
+
+
+Vs Factory Method: FM — один продукт через наслідування; AF — сімейство через композицію
+                                                                                                        19
+
+ C# — Abstract Factory + Dependency Injection (ASP.NET Core)
+Реєстрація фабрики залежно від середовища через вбудований DI контейнер:
+
+// Program.cs — ASP.NET Core / .NET 6+
+var builder = WebApplication.CreateBuilder(args);
+
+
+// Реєстрація фабрики через DI залежно від оточення
+if (builder.Environment.IsProduction()) {
+    builder.Services.AddSingleton<INotificationFactory,
+                                            SmtpNotificationFactory>();
+} else {
+    builder.Services.AddSingleton<INotificationFactory,
+                                            FakeNotificationFactory>(); // тести — без реальних email
+}
+
+
+// Сервіс отримує фабрику через конструктор — не знає про реалізацію
+public class OrderService(INotificationFactory factory) {
+    public void PlaceOrder(Order order) {
+
+
+
+           var emailSender = factory.CreateEmailSender();
+           var smsSender       = factory.CreateSmsSender();
+           emailSender.Send(order.Email, "Замовлення прийнято");
+           smsSender.Send(order.Phone, "SMS підтвердження");
+
+
+}
+    Висновки
+     }
+
+
+
+
+    1       Abstract Factory ізолює клієнта від конкретних класів — залежність лише від інтерфейсів
+
+
+    2       Гарантує сумісність: одна фабрика = узгоджений набір продуктів
+
+
+    3       Нове сімейство (Linux) = новий клас фабрики, Application не зачіпаємо
+
+
+    4       Реалізує OCP, DIP, SRP — відповідає принципам SOLID
+
+
+    5       Використовується в .NET DI, Qt, Flutter, Apache POI, хмарних SDK
+
+
+
+                                                                               20
+                                  ДОДАТОК В
+                                  Запити до ШІ
+
+     Назва інструменту та версія: Claude Sonnet 4.6
+     Мета використання: дослідження патерну проєктування Abstract Factory,
+формулювання технічних пояснень, підготовка прикладів реалізації на C# та
+підготовка структури доповіді.
+     Внесок     автора:    самостійне     формулювання     запитів,   оцінювання
+запропонованих пояснень, верифікація прикладів коду, написання доповіді,
+створення презентації та відеодоповіді.
+     Запит: «Поясни патерн проєктування Abstract Factory: яку проблему він
+вирішує, яка його структура та учасники, які наміри він переслідує. Наведи приклад
+реалізації на C# для кросплатформного GUI – Windows і macOS – з інтерфейсами
+IButton, ICheckbox та IGUIFactory. Покажи, як додати нову платформу (Linux), не
+змінюючи існуючий клієнтський код».
+     Відповідь: Інструмент надав детальний технічний огляд патерну: описав
+проблему прив’язки до конкретних класів при умовному створенні об’єктів через
+if-else, пояснив п’ять типів учасників (IGUIFactory, конкретні фабрики, абстрактні
+та конкретні продукти, клієнт Application), сформулював чотири наміри патерну та
+їх відповідність принципам SOLID. Надано повну реалізацію на C# з інтерфейсами
+продуктів і фабрики, класами WindowsFactory та MacFactory, клієнтом із
+Dependency Injection через конструктор, а також розширення на LinuxFactory без
+змін у класі Application як демонстрацію Open/Closed Principle.
+     Запит: «Покажи, як Abstract Factory застосовується у реальному ASP.NET
+Core застосунку. Наведи приклад системи оповіщень з INotificationFactory, де
+production-середовище використовує реальні SMTP та SMS-відправники, а тестове
+– заглушки, що пишуть у лог.».
+     Відповідь: Інструмент надав приклад із реєстрацією SmtpNotificationFactory
+та FakeNotificationFactory у DI-контейнері ASP.NET Core залежно від поточного
+оточення через builder.Environment.IsProduction(), а також реалізацію OrderService
+із первинним конструктором, що отримує INotificationFactory і викликає
+                                                                         21
+CreateEmailSender() та CreateSmsSender() без будь-яких посилань на конкретні
+реалізації.
+
